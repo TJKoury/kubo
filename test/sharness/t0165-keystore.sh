@@ -11,8 +11,8 @@ test_description="Test keystore commands"
 test_init_ipfs
 
 test_key_cmd() {
-# test key output format
-test_expect_success "create an RSA key and test B58MH/B36CID output formats" '
+  # test key output format
+  test_expect_success "create an RSA key and test B58MH/B36CID output formats" '
 PEERID=$(ipfs key gen --ipns-base=b58mh --type=rsa --size=2048 key_rsa) &&
 test_check_rsa2048_b58mh_peerid $PEERID &&
 ipfs key rm key_rsa &&
@@ -20,13 +20,13 @@ PEERID=$(ipfs key gen --ipns-base=base36 --type=rsa --size=2048 key_rsa) &&
 test_check_rsa2048_base36_peerid $PEERID
 '
 
-test_expect_success "test RSA key sk export format" '
+  test_expect_success "test RSA key sk export format" '
 ipfs key export key_rsa &&
 test_check_rsa2048_sk key_rsa.key &&
 rm key_rsa.key
 '
 
-test_expect_success "test RSA key B58MH/B36CID multihash format" '
+  test_expect_success "test RSA key B58MH/B36CID multihash format" '
 PEERID=$(ipfs key list --ipns-base=b58mh -l | grep key_rsa | head -n 1 | cut -d " " -f1) &&
 test_check_rsa2048_b58mh_peerid $PEERID &&
 PEERID=$(ipfs key list --ipns-base=base36 -l | grep key_rsa | head -n 1 | cut -d " " -f1) &&
@@ -34,7 +34,7 @@ test_check_rsa2048_base36_peerid $PEERID &&
 ipfs key rm key_rsa
 '
 
-test_expect_success "create an ED25519 key and test B58MH/B36CID output formats" '
+  test_expect_success "create an ED25519 key and test B58MH/B36CID output formats" '
 PEERID=$(ipfs key gen --ipns-base=b58mh --type=ed25519 key_ed25519) &&
 test_check_ed25519_b58mh_peerid $PEERID &&
 ipfs key rm key_ed25519 &&
@@ -42,21 +42,43 @@ PEERID=$(ipfs key gen --ipns-base=base36 --type=ed25519 key_ed25519) &&
 test_check_ed25519_base36_peerid $PEERID
 '
 
-test_expect_success "test ED25519 key sk export format" '
+  test_expect_success "test ED25519 key sk export format" '
 ipfs key export key_ed25519 &&
 test_check_ed25519_sk key_ed25519.key &&
 rm key_ed25519.key
 '
 
-test_expect_success "test ED25519 key B58MH/B36CID multihash format" '
+  test_expect_success "test ED25519 key B58MH/B36CID multihash format" '
 PEERID=$(ipfs key list --ipns-base=b58mh -l | grep key_ed25519 | head -n 1 | cut -d " " -f1) &&
 test_check_ed25519_b58mh_peerid $PEERID &&
 PEERID=$(ipfs key list --ipns-base=base36 -l | grep key_ed25519 | head -n 1 | cut -d " " -f1) &&
 test_check_ed25519_base36_peerid $PEERID &&
 ipfs key rm key_ed25519
 '
-# end of format test
 
+  test_expect_success "create an SECP256k1 key and test B58MH/B36CID output formats" '
+PEERID=$(ipfs key gen --ipns-base=b58mh --type=secp256k1 key_secp256k1) &&
+test_check_secp256k1_b58mh_peerid $PEERID &&
+ipfs key rm key_secp256k1 &&
+PEERID=$(ipfs key gen --ipns-base=base36 --type=secp256k1 key_secp256k1) &&
+test_check_secp256k1_base36_peerid $PEERID
+'
+
+  test_expect_success "test SECP256k1 key sk export format" '
+ipfs key export key_secp256k1 &&
+test_check_ed25519_sk key_secp256k1.key &&
+rm key_secp256k1.key
+'
+
+  test_expect_success "test SECP256k1 key B58MH/B36CID multihash format" '
+PEERID=$(ipfs key list --ipns-base=b58mh -l | grep key_secp256k1 | head -n 1 | cut -d " " -f1) &&
+test_check_secp256k1_b58mh_peerid $PEERID &&
+PEERID=$(ipfs key list --ipns-base=base36 -l | grep key_secp256k1 | head -n 1 | cut -d " " -f1) &&
+test_check_secp256k1_base36_peerid $PEERID &&
+ipfs key rm key_secp256k1
+'
+
+  # end of format test
 
   test_expect_success "create a new rsa key" '
     rsahash=$(ipfs key gen generated_rsa_key --type=rsa --size=2048)
@@ -71,6 +93,11 @@ ipfs key rm key_ed25519
   '
 
   test_key_import_export_all_formats ed25519_key
+
+  test_expect_success "create a new secp256k1 key" '
+    k1hash=$(ipfs key gen generated_secp256k1_key --type=secp256k1)
+    echo $k1hash > secp256k1_key_id
+  '
 
   test_openssl_compatibility_all_types
 
@@ -92,7 +119,7 @@ ipfs key rm key_ed25519
     ipfs key export generated_ed25519_key -o=named_ed25519_export_file &&
     test_cmp generated_ed25519_key.key named_ed25519_export_file
   '
-  
+
   test_expect_success "key export can't export self" '
     test_must_fail ipfs key export self 2>&1 | tee key_exp_out &&
     grep -q "Error: cannot export key with name" key_exp_out &&
@@ -116,6 +143,7 @@ ipfs key rm key_ed25519
   test_expect_success "all keys show up in list output" '
     echo generated_ed25519_key > list_exp &&
     echo generated_rsa_key >> list_exp &&
+    echo generated_secp256k1_key >> list_exp &&
     echo quxel >> list_exp &&
     echo self >> list_exp
     ipfs key list > list_out &&
@@ -135,6 +163,7 @@ ipfs key rm key_ed25519
   test_expect_success "key rm remove a key" '
     ipfs key rm generated_rsa_key
     echo generated_ed25519_key > list_exp &&
+    echo generated_secp256k1_key >> list_exp &&
     echo quxel >> list_exp &&
     echo self >> list_exp
     ipfs key list > list_out &&
@@ -149,6 +178,7 @@ ipfs key rm key_ed25519
   test_expect_success "key rename rename a key" '
     ipfs key rename generated_ed25519_key fooed
     echo fooed > list_exp &&
+    echo generated_secp256k1_key >> list_exp &&
     echo quxel >> list_exp &&
     echo self >> list_exp
     ipfs key list > list_out &&
@@ -204,7 +234,7 @@ ipfs key rm key_ed25519
 
 test_check_rsa2048_sk() {
   sklen=$(ls -l $1 | awk '{print $5}') &&
-  test "$sklen" -lt "1600" && test "$sklen" -gt "1000" || {
+    test "$sklen" -lt "1600" && test "$sklen" -gt "1000" || {
     echo "Bad RSA2048 sk '$1' with len '$sklen'"
     return 1
   }
@@ -212,7 +242,7 @@ test_check_rsa2048_sk() {
 
 test_check_ed25519_sk() {
   sklen=$(ls -l $1 | awk '{print $5}') &&
-  test "$sklen" -lt "100" && test "$sklen" -gt "30" || {
+    test "$sklen" -lt "100" && test "$sklen" -gt "30" || {
     echo "Bad ED25519 sk '$1' with len '$sklen'"
     return 1
   }
@@ -274,7 +304,6 @@ test_openssl_compatibility_all_types() {
   test_openssl_compatibility ../t0165-keystore-data/openssl_ed25519.pem
   test_openssl_compatibility ../t0165-keystore-data/openssl_rsa.pem
 }
-
 
 test_key_cmd
 
