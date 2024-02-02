@@ -3,12 +3,14 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 
 	"github.com/ipfs/boxo/ipns"
 	"github.com/ipfs/boxo/path"
 	iface "github.com/ipfs/kubo/core/coreiface"
 	caopts "github.com/ipfs/kubo/core/coreiface/options"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multibase"
 )
@@ -16,27 +18,40 @@ import (
 type KeyAPI HttpApi
 
 type key struct {
-	name string
-	pid  peer.ID
-	path path.Path
+	name      string
+	publicKey string
+	pid       peer.ID
+	path      path.Path
 }
 
-func newKey(name, pidStr string) (*key, error) {
-	pid, err := peer.Decode(pidStr)
+func newKey(name string, pid peer.ID, publicKey crypto.PubKey) (*key, error) {
+	p, err := path.NewPath("/ipns/" + ipns.NameFromPeer(pid).String())
 	if err != nil {
 		return nil, err
 	}
 
-	path, err := path.NewPath("/ipns/" + ipns.NameFromPeer(pid).String())
-	if err != nil {
-		return nil, err
+	pubKeyBase64 := "" // Default to an empty string if no public key is provided
+	if publicKey != nil {
+		// Marshal the public key to bytes only if it's provided
+		pubKeyBytes, err := crypto.MarshalPublicKey(publicKey)
+		if err != nil {
+			return nil, err
+		}
+
+		// Encode the public key bytes to a base64 string
+		pubKeyBase64 = base64.StdEncoding.EncodeToString(pubKeyBytes)
 	}
 
-	return &key{name: name, pid: pid, path: path}, nil
+	return &key{
+		name:      name,
+		pid:       pid,
+		publicKey: pubKeyBase64, // Set to the base64-encoded public key or an empty string
+		path:      p,
+	}, nil
 }
 
-func (k *key) Name() string {
-	return k.name
+func (k *key) PublicKey() string {
+	return k.publicKey
 }
 
 func (k *key) Path() path.Path {

@@ -15,6 +15,9 @@ type Key interface {
 	// Key returns key name
 	Name() string
 
+	// Public Key returns the public key as a base64 string
+	PublicKey() string
+
 	// Path returns key path
 	Path() path.Path
 

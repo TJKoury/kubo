@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch IPFS Daemon",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "preLaunchTask": "build-ipfs",
+      "program": "${workspaceFolder}/cmd/ipfs/ipfs.go",
+      "args": ["daemon"],
+      "env": {
+        "IPFS_PATH": "${workspaceFolder}/.ipfs"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "label": "build-ipfs",
+      "type": "shell",
+      "command": "make",
+      "args": ["build"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$go"]
+    }
+  ]
+}

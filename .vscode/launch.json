@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch IPFS Daemon",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "preLaunchTask": "build-ipfs",
+      "program": "${workspaceFolder}/cmd/ipfs",
+      "args": ["daemon"],
+      "env": {
+        "IPFS_PATH": "~/.ipfs"
+      }
+    }
+  ]
+}

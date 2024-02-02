@@ -3,6 +3,7 @@ package coreapi
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"sort"
@@ -21,20 +22,35 @@ import (
 type KeyAPI CoreAPI
 
 type key struct {
-	name   string
-	peerID peer.ID
-	path   path.Path
+	name      string
+	publicKey string
+	peerID    peer.ID
+	path      path.Path
 }
 
-func newKey(name string, pid peer.ID) (*key, error) {
+func newKey(name string, pid peer.ID, publicKey crypto.PubKey) (*key, error) {
 	p, err := path.NewPath("/ipns/" + ipns.NameFromPeer(pid).String())
 	if err != nil {
 		return nil, err
 	}
+
+	pubKeyBase64 := "" // Default to an empty string if no public key is provided
+	if publicKey != nil {
+		// Marshal the public key to bytes only if it's provided
+		pubKeyBytes, err := crypto.MarshalPublicKey(publicKey)
+		if err != nil {
+			return nil, err
+		}
+
+		// Encode the public key bytes to a base64 string
+		pubKeyBase64 = base64.StdEncoding.EncodeToString(pubKeyBytes)
+	}
+
 	return &key{
-		name:   name,
-		peerID: pid,
-		path:   p,
+		name:      name,
+		peerID:    pid,
+		publicKey: pubKeyBase64, // Set to the base64-encoded public key or an empty string
+		path:      p,
 	}, nil
 }
 
@@ -46,6 +62,11 @@ func (k *key) Name() string {
 // Path returns the path of the key.
 func (k *key) Path() path.Path {
 	return k.path
+}
+
+// PublicKey returns base64 Public Key
+func (k *key) PublicKey() string {
+	return k.publicKey
 }
 
 // ID returns key PeerID
@@ -100,7 +121,8 @@ func (api *KeyAPI) Generate(ctx context.Context, name string, opts ...caopts.Key
 	case "secp256k1":
 		priv, pub, err := crypto.GenerateSecp256k1Key(rand.Reader)
 		if err != nil {
-			return nil, err
+			fmt.Printf("Error generating secp256k1 key: %v\n", err) // Output the error to the terminal
+			return nil, err                                         // Return a more informative error
 		}
 
 		sk = priv
@@ -119,7 +141,7 @@ func (api *KeyAPI) Generate(ctx context.Context, name string, opts ...caopts.Key
 		return nil, err
 	}
 
-	return newKey(name, pid)
+	return newKey(name, pid, pk)
 }
 
 // List returns a list keys stored in keystore.
@@ -135,7 +157,7 @@ func (api *KeyAPI) List(ctx context.Context) ([]coreiface.Key, error) {
 	sort.Strings(keys)
 
 	out := make([]coreiface.Key, len(keys)+1)
-	out[0], err = newKey("self", api.identity)
+	out[0], err = newKey("self", api.identity, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +175,7 @@ func (api *KeyAPI) List(ctx context.Context) ([]coreiface.Key, error) {
 			return nil, err
 		}
 
-		out[n+1], err = newKey(k, pid)
+		out[n+1], err = newKey(k, pid, pubKey)
 		if err != nil {
 			return nil, err
 		}
@@ -198,7 +220,7 @@ func (api *KeyAPI) Rename(ctx context.Context, oldName string, newName string, o
 	// This is important, because future code will delete key `oldName`
 	// even if it is the same as newName.
 	if newName == oldName {
-		k, err := newKey(oldName, pid)
+		k, err := newKey(oldName, pid, pubKey)
 		return k, false, err
 	}
 
@@ -228,7 +250,7 @@ func (api *KeyAPI) Rename(ctx context.Context, oldName string, newName string, o
 		return nil, false, err
 	}
 
-	k, err := newKey(newName, pid)
+	k, err := newKey(newName, pid, pubKey)
 	return k, overwrite, err
 }
 
@@ -260,7 +282,7 @@ func (api *KeyAPI) Remove(ctx context.Context, name string) (coreiface.Key, erro
 		return nil, err
 	}
 
-	return newKey("", pid)
+	return newKey("", pid, pubKey)
 }
 
 func (api *KeyAPI) Self(ctx context.Context) (coreiface.Key, error) {
@@ -268,7 +290,7 @@ func (api *KeyAPI) Self(ctx context.Context) (coreiface.Key, error) {
 		return nil, errors.New("identity not loaded")
 	}
 
-	return newKey("self", api.identity)
+	return newKey("self", api.identity, nil)
 }
 
 const signedMessagePrefix = "libp2p-key signed message:"
@@ -293,7 +315,7 @@ func (api *KeyAPI) Sign(ctx context.Context, name string, data []byte) (coreifac
 		return nil, nil, err
 	}
 
-	key, err := newKey(name, pid)
+	key, err := newKey(name, pid, sk.GetPublic())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -336,7 +358,7 @@ func (api *KeyAPI) Verify(ctx context.Context, keyOrName string, signature, data
 		return nil, false, err
 	}
 
-	key, err := newKey(name, pid)
+	key, err := newKey(name, pid, pk)
 	if err != nil {
 		return nil, false, err
 	}

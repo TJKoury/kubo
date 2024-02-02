@@ -58,8 +58,9 @@ publish'.
 }
 
 type KeyOutput struct {
-	Name string
-	Id   string //nolint
+	Name      string
+	PublicKey string
+	Id        string //nolint
 }
 
 type KeyOutputList struct {
@@ -474,8 +475,9 @@ var keyListCmd = &cmds.Command{
 
 		for _, key := range keys {
 			list = append(list, KeyOutput{
-				Name: key.Name(),
-				Id:   keyEnc.FormatID(key.ID()),
+				Name:      key.Name(),
+				PublicKey: key.PublicKey(),
+				Id:        keyEnc.FormatID(key.ID()),
 			})
 		}
 
